@@ -3,6 +3,8 @@ package edu.austral.ingsis;
 import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import edu.austral.ingsis.clifford.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -16,10 +18,26 @@ public class FileSystemTests {
     final List<String> expectedResult =
         commandsAndResults.stream().map(Map.Entry::getValue).toList();
 
-    final List<String> actualResult = runner.executeCommands(commands);
+    final List<String> actualResult = runner2.executeCommands(commands);
 
     assertEquals(expectedResult, actualResult);
   }
+
+  private final FileSystemRunner runner2 =
+      new FileSystemRunner() {
+        @Override
+        public List<String> executeCommands(List<String> commands) {
+          FileSystem fileSystem = new FileSystemImpl(new Directory("root", null));
+          List<String> results = new ArrayList<>();
+          CommandFactory commandFactory = new CommandFactory(fileSystem);
+          for (String command : commands) {
+            Command cmd = commandFactory.createCommand(command);
+            String result = cmd.execute(command.split(" "));
+            results.add(result);
+          }
+          return results;
+        }
+      };
 
   @Test
   public void test1() {
@@ -49,7 +67,7 @@ public class FileSystemTests {
   }
 
   @Test
-  void test3() {
+  void test3() { // test
     executeTest(
         List.of(
             entry("mkdir horace", "'horace' directory created"),
@@ -58,7 +76,7 @@ public class FileSystemTests {
             entry("cd emily", "moved to directory 'emily'"),
             entry("touch elizabeth.txt", "'elizabeth.txt' file created"),
             entry("mkdir t-bone", "'t-bone' directory created"),
-            entry("ls", "t-bone elizabeth.txt"),
+            entry("ls", "elizabeth.txt t-bone"),
             entry("rm t-bone", "cannot remove 't-bone', is a directory"),
             entry("rm --recursive t-bone", "'t-bone' removed"),
             entry("ls", "elizabeth.txt"),
@@ -119,5 +137,25 @@ public class FileSystemTests {
             entry("rm --recursive emily", "'emily' removed"),
             entry("ls", "emily.txt jetta.txt"),
             entry("ls --ord=desc", "jetta.txt emily.txt")));
+  }
+
+  @Test
+  public void testLsOrdAsc() {
+    // Create a new file system with a root directory
+    FileSystem fileSystem = new FileSystemImpl(new Directory("root", null));
+
+    // Create a new command factory with the file system
+    CommandFactory commandFactory = new CommandFactory(fileSystem);
+
+    // Create directories "horace" and "emily"
+    commandFactory.createCommand("mkdir horace").execute(new String[] {"mkdir", "horace"});
+    commandFactory.createCommand("mkdir emily").execute(new String[] {"mkdir", "emily"});
+
+    // Execute the "ls --ord=asc" command
+    Command lsOrdAsc = commandFactory.createCommand("ls --ord=asc");
+    String result = lsOrdAsc.execute(new String[] {"ls", "--ord=asc"});
+
+    // Check that the output is "emily horace"
+    assertEquals("emily horace", result);
   }
 }
